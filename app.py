@@ -35,6 +35,26 @@ def load_ml_artifacts():
     model_path = os.path.join(base_dir, 'ann_student_status.h5') # Use .h5 extension
     lock_path = os.path.join(base_dir, 'model.lock')
 
+    def download_model():
+        """Download model with a raw/release URL to avoid HTML blob content."""
+        model_url = "https://github.com/imamrzkys/TUGAS-11-MACHINE-LEARNING/releases/download/v1.0.0/ann_student_status.h5"
+        print(f"Downloading model from {model_url}...")
+        with requests.get(model_url, stream=True, timeout=30) as r:
+            r.raise_for_status()
+            with open(model_path, 'wb') as f:
+                for chunk in r.iter_content(chunk_size=8192):
+                    if chunk:
+                        f.write(chunk)
+        print("Download complete.")
+
+    def load_all():
+        print("Loading model and artifacts...")
+        loaded_model = load_model(model_path)
+        loaded_scaler = joblib.load(os.path.join(base_dir, 'scaler.pkl'))
+        loaded_label_encoder = joblib.load(os.path.join(base_dir, 'label_encoder.pkl'))
+        loaded_feature_columns = joblib.load(os.path.join(base_dir, 'feature_columns.pkl'))
+        return loaded_model, loaded_scaler, loaded_label_encoder, loaded_feature_columns
+
     try:
         lock_file = open(lock_path, 'x')
         print("Acquired lock. Proceeding with model download...")
@@ -42,15 +62,7 @@ def load_ml_artifacts():
         if os.path.exists(model_path):
             os.remove(model_path)
 
-        # Use the new .h5 model URL from GitHub Releases
-        model_url = "https://github.com/MuhamadDaffaNashrullah/TUGAS-11-MACHINE/blob/a98b0e32cb452411fc11bb677b46155953308ac4/ann_student_status.h5"
-        print(f"Downloading model from {model_url}...")
-        with requests.get(model_url, stream=True) as r:
-            r.raise_for_status()
-            with open(model_path, 'wb') as f:
-                for chunk in r.iter_content(chunk_size=8192):
-                    f.write(chunk)
-        print("Download complete.")
+        download_model()
         
         lock_file.close()
         os.remove(lock_path)
@@ -66,11 +78,13 @@ def load_ml_artifacts():
             os.remove(lock_path)
         raise RuntimeError(f"An error occurred during model setup: {e}")
 
-    print("Loading model and artifacts...")
-    model = load_model(model_path)
-    scaler = joblib.load(os.path.join(base_dir, 'scaler.pkl'))
-    label_encoder = joblib.load(os.path.join(base_dir, 'label_encoder.pkl'))
-    feature_columns = joblib.load(os.path.join(base_dir, 'feature_columns.pkl'))
+    try:
+        model, scaler, label_encoder, feature_columns = load_all()
+    except OSError as e:
+        # If corrupted/incomplete download, retry once
+        print(f"[WARN] Failed to load model ({e}); re-downloading once...")
+        download_model()
+        model, scaler, label_encoder, feature_columns = load_all()
     
     print("[OK] Model artifacts loaded successfully")
 
