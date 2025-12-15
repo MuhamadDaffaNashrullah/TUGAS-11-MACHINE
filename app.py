@@ -43,7 +43,7 @@ def load_ml_artifacts():
             os.remove(model_path)
 
         # Use the new .h5 model URL from GitHub Releases
-        model_url = "https://github.com/imamrzkys/TUGAS-11-MACHINE-LEARNING/releases/download/v1.0.0/ann_student_status.h5"
+        model_url = "https://github.com/MuhamadDaffaNashrullah/TUGAS-11-MACHINE/blob/a98b0e32cb452411fc11bb677b46155953308ac4/ann_student_status.h5"
         print(f"Downloading model from {model_url}...")
         with requests.get(model_url, stream=True) as r:
             r.raise_for_status()
